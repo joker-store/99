@@ -39,7 +39,7 @@
 
   <table id="requestsTable">
     <thead>
-      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت الفتح</th><th>المدة</th><th>الحالة</th></tr>
+      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت الفتح</th><th>الوقت المتبقى علي انتهاء الدورة الحالية</th><th>الحالة</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -77,7 +77,7 @@
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       allRequests.forEach((req) => {
         let status = "قيد الانتظار";
-        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة - في انتظار بدء الدورة";
+        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة - في انتظار انتهاء الدورة";
         if (req.cycleStarted) status = "الدورة قيد التشغيل";
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${req.openTime || '-'}</td><td>${req.duration ? req.duration + ' دقيقة' : '-'}</td><td>${status}</td>`;
