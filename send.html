@@ -21,7 +21,6 @@
   <form id="requestForm">
     <label for="senderName">اسمك:</label>
     <input type="text" id="senderName" required placeholder="مثلاً: أحمد" />
-
     <label for="device">اختر الجهاز:</label>
     <select id="device" required>
       <option value="">-- اختر جهاز --</option>
@@ -31,7 +30,6 @@
       <option value="PC10">PC10</option><option value="PC11">PC11</option><option value="PC12">PC12</option>
       <option value="PC13_VIP">PC13_VIP</option><option value="PC14_VIP">PC14_VIP</option><option value="PC15_VIP">PC15_VIP</option>
     </select>
-
     <button type="submit">إرسال</button>
   </form>
 
@@ -41,39 +39,29 @@
 
   <table id="requestsTable">
     <thead>
-      <tr><th>الاسم</th><th>الجهاز</th><th>الحالة</th></tr>
+      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت الفتح</th><th>المدة</th><th>الحالة</th></tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <script>
-    let myRequestId = localStorage.getItem('myRequestId') ? parseInt(localStorage.getItem('myRequestId')) : null;
+    function generateId() {return 'id-' + Math.random().toString(36).substr(2, 9);}
+    let myRequestId = localStorage.getItem('myRequestId') || null;
 
     document.getElementById('requestForm').addEventListener('submit', function (e) {
       e.preventDefault();
       const sender = document.getElementById('senderName').value.trim();
       const device = document.getElementById('device').value;
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-
-      // منع الحجز المكرر
-      if (allRequests.some(r => r.device === device && (r.accepted || r.cycleStarted))) {
-        showMessage("⚠️ الجهاز محجوز بالفعل أو في دورة شغالة.");
+      if (allRequests.some(r => r.device === device && (r.cycleStarted))) {
+        showMessage("⚠️ الجهاز محجوز بدورة شغالة.");
         return;
       }
-
-      const newRequest = {
-        sender, device,
-        time: new Date().toLocaleTimeString(),
-        requestTime: Date.now(),
-        accepted: false,
-        cycleStarted: false,
-        openTime: null,
-        duration: null,
-        startTime: null
-      };
+      const id = generateId();
+      const newRequest = {id, sender, device,time: new Date().toLocaleTimeString(),requestTime: Date.now(),accepted: false,cycleStarted: false,openTime: null,duration: null,startTime: null};
       allRequests.push(newRequest);
       localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-      myRequestId = allRequests.length - 1;
+      myRequestId = id;
       localStorage.setItem('myRequestId', myRequestId);
       showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
       this.reset();
@@ -87,13 +75,13 @@
       const tbody = document.querySelector("#requestsTable tbody");
       tbody.innerHTML = "";
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      allRequests.forEach((req, index) => {
+      allRequests.forEach((req) => {
         let status = "قيد الانتظار";
-        if (req.accepted && !req.cycleStarted) status = "في انتظار بدء الدورة";
+        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة - في انتظار بدء الدورة";
         if (req.cycleStarted) status = "الدورة قيد التشغيل";
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${status}</td>`;
-        if (index === myRequestId) {tr.style.background = "#d1f7d1";tr.style.fontWeight = "bold";}
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${req.openTime || '-'}</td><td>${req.duration ? req.duration + ' دقيقة' : '-'}</td><td>${status}</td>`;
+        if (req.id === myRequestId) {tr.style.background = "#d1f7d1";tr.style.fontWeight = "bold";}
         tbody.appendChild(tr);
       });
     }
@@ -101,21 +89,14 @@
     function startCountdown(req) {
       const countdownDiv = document.getElementById("countdown");
       if (!req.duration || !req.startTime) { countdownDiv.innerText = ""; return; }
-
       function updateCountdown() {
         const now = Date.now();
         const endTime = req.startTime + req.duration * 60 * 1000;
         const remaining = endTime - now;
-
-        if (remaining <= 0) {
-          countdownDiv.innerText = "انتهت الجلسة";
-          return;
-        }
-
+        if (remaining <= 0) {countdownDiv.innerText = "انتهت الجلسة";return;}
         const minutes = Math.floor(remaining / 1000 / 60);
         const seconds = Math.floor((remaining / 1000) % 60);
         countdownDiv.innerText = `الوقت المتبقي: ${minutes}:${seconds < 10 ? '0'+seconds : seconds}`;
-
         requestAnimationFrame(updateCountdown);
       }
       updateCountdown();
@@ -123,13 +104,13 @@
 
     function checkStatus() {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (myRequestId !== null && allRequests[myRequestId]) {
-        const req = allRequests[myRequestId];
+      const req = allRequests.find(r => r.id === myRequestId);
+      if (req) {
         if (req.cycleStarted) {
-          showMessage("✅ الدورة بدأت في: " + (req.openTime || "غير معروف"));
+          showMessage(`✅ تم فتح الجهاز في: ${req.openTime}`);
           startCountdown(req);
         } else if (req.accepted) {
-          showMessage("⏳ تمت الموافقة، في انتظار بدء الدورة...");
+          showMessage("تمت الموافقة - في انتظار بدء الدورة...");
         } else {
           showMessage("⏳ طلبك قيد الانتظار...");
         }
@@ -140,22 +121,17 @@
 
     function toggleDeleteButton() {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      const req = allRequests.find(r => r.id === myRequestId);
       const btn = document.getElementById("deleteBtn");
-      if (myRequestId !== null && allRequests[myRequestId]) {
-        const req = allRequests[myRequestId];
-        if (Date.now() - req.requestTime < 60000 && !req.accepted) {
-          btn.style.display = "block";
-        } else {
-          btn.style.display = "none";
-        }
-      }
+      if (req && Date.now() - req.requestTime < 60000 && !req.accepted) {btn.style.display = "block";} else {btn.style.display = "none";}
     }
 
     document.getElementById("deleteBtn").addEventListener("click", function() {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (myRequestId !== null && allRequests[myRequestId]) {
-        if (Date.now() - allRequests[myRequestId].requestTime < 60000 && !allRequests[myRequestId].accepted) {
-          allRequests.splice(myRequestId, 1);
+      const idx = allRequests.findIndex(r => r.id === myRequestId);
+      if (idx !== -1) {
+        if (Date.now() - allRequests[idx].requestTime < 60000 && !allRequests[idx].accepted) {
+          allRequests.splice(idx, 1);
           localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
           localStorage.removeItem('myRequestId');
           myRequestId = null;
