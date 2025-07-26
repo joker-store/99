@@ -67,6 +67,10 @@
     function startCycle(index) {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       if (allRequests[index]) {
+        if (!allRequests[index].duration || allRequests[index].duration <= 0) {
+          alert("يرجى تحديد مدة الجلسة أولاً (بالدقائق).");
+          return;
+        }
         allRequests[index].cycleStarted = true;
         allRequests[index].openTime = new Date().toLocaleTimeString();
         allRequests[index].startTime = Date.now();
