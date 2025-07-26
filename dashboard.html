@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>حالة الطلب</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      padding: 20px;
+      direction: rtl;
+      min-height: 100vh;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h2 {
+      text-align: center;
+      color: #3498db;
+    }
+    .status {
+      text-align: center;
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .accepted {
+      background-color: #2ecc71;
+      color: white;
+    }
+    .rejected {
+      background-color: #e74c3c;
+      color: white;
+    }
+    .waiting {
+      background-color: #f39c12;
+      color: white;
+    }
+    .working {
+      background-color: #3498db;
+      color: white;
+    }
+    .remaining-time {
+      margin-top: 10px;
+      font-size: 18px;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>تفاصيل طلبك</h2>
+
+    <div id="requestDetails">
+      <!-- تفاصيل الطلب ستظهر هنا -->
+    </div>
+
+    <div id="statusMessage" class="status">
+      <!-- الحالة ستظهر هنا (معلق، تم قبوله، تم رفضه) -->
+    </div>
+
+    <div id="remainingTime" class="remaining-time">
+      <!-- الوقت المتبقي سيظهر هنا -->
+    </div>
+  </div>
+
+  <script>
+    // قراءة الطلبات من localStorage
+    const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+    const urlParams = new URLSearchParams(window.location.search);
+    const requestId = urlParams.get('id');  // نفترض إننا نستقبل ID الطلب في الـ URL
+
+    function loadRequestDetails() {
+      const request = allRequests[requestId];
+      
+      if (request) {
+        // عرض التفاصيل للمستخدم
+        document.getElementById('requestDetails').innerHTML = `
+          <p><strong>اسم المستخدم:</strong> ${request.sender}</p>
+          <p><strong>الجهاز المطلوب:</strong> ${request.device}</p>
+          <p><strong>الوقت:</strong> ${request.time}</p>
+        `;
+
+        // عرض حالة الطلب
+        let statusMessage = '';
+        let remainingTimeMessage = '';
+        
+        if (request.accepted) {
+          statusMessage = `<p class="accepted">✅ تم قبول طلبك!</p>`;
+          // لو الجهاز شغال حالياً
+          if (request.openTime) {
+            // حساب الوقت المتبقي
+            const endTime = new Date(new Date(request.openTime).getTime() + 30 * 60 * 1000); // نفترض أن مدة الاستخدام 30 دقيقة
+            const now = new Date();
+            const timeRemaining = Math.max(0, endTime - now); // الحساب بالمللي ثانية
+            const minutesRemaining = Math.floor(timeRemaining / (1000 * 60)); // التحويل إلى دقائق
+            remainingTimeMessage = `<p class="working">الجهاز شغال. الوقت المتبقي: ${minutesRemaining} دقيقة</p>`;
+          } else {
+            remainingTimeMessage = `<p class="working">الجهاز شغال الآن. الوقت المتبقي غير معروف.</p>`;
+          }
+        } else if (request.accepted === false) {
+          statusMessage = `<p class="rejected">❌ تم رفض طلبك.</p>`;
+        } else {
+          statusMessage = `<p class="waiting">⌛ طلبك قيد الانتظار...</p>`;
+        }
+
+        // عرض الرسائل على الصفحة
+        document.getElementById('statusMessage').innerHTML = statusMessage;
+        document.getElementById('remainingTime').innerHTML = remainingTimeMessage;
+      } else {
+        document.getElementById('requestDetails').innerHTML = '<p>لم يتم العثور على هذا الطلب.</p>';
+      }
+    }
+
+    loadRequestDetails();
+  </script>
+</body>
+</html>

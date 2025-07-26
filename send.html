@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>طلب فتح جهاز</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      padding: 20px;
+      direction: rtl;
+      min-height: 100vh;
+    }
+    form {
+      background: rgba(255, 255, 255, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 400px;
+      margin: auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #statusMessage {
+      text-align: center;
+      background-color: #ffffffcc;
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    table th {
+      background: #2ecc71;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h2>إرسال طلب فتح جهاز</h2>
+  <form id="requestForm">
+    <label for="senderName">اسمك:</label>
+    <input type="text" id="senderName" required placeholder="مثلاً: أحمد" />
+
+    <label for="device">اختر الجهاز:</label>
+    <select id="device" required>
+      <option value="">-- اختر جهاز --</option>
+      <option value="PC01">PC01</option>
+      <option value="PC02">PC02</option>
+      <option value="PC03">PC03</option>
+      <option value="PC04">PC04</option>
+      <option value="PC05">PC05</option>
+      <option value="PC06">PC06</option>
+      <option value="PC07">PC07</option>
+      <option value="PC08">PC08</option>
+      <option value="PC09">PC09</option>
+      <option value="PC10">PC10</option>
+      <option value="PC11">PC11</option>
+      <option value="PC12">PC12</option>
+      <option value="PC13_VIP">PC13_VIP</option>
+      <option value="PC14_VIP">PC14_VIP</option>
+      <option value="PC15_VIP">PC15_VIP</option>
+    </select>
+
+    <button type="submit">إرسال</button>
+  </form>
+
+  <div id="statusMessage"></div>
+
+  <!-- جدول الطلبات -->
+  <table id="requestsTable">
+    <thead>
+      <tr>
+        <th>الاسم</th>
+        <th>الجهاز</th>
+        <th>حالة الطلب</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let myRequestId = localStorage.getItem('myRequestId') ? parseInt(localStorage.getItem('myRequestId')) : null;
+
+    document.getElementById('requestForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const sender = document.getElementById('senderName').value;
+      const device = document.getElementById('device').value;
+      const time = new Date().toLocaleTimeString();
+
+      const newRequest = {
+        sender: sender,
+        device: device,
+        time: time,
+        accepted: false,
+        openTime: null
+      };
+
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      allRequests.push(newRequest);
+      localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
+
+      myRequestId = allRequests.length - 1;
+      localStorage.setItem('myRequestId', myRequestId); // تخزين ID الطلب
+      showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
+      this.reset();
+
+      renderTable();
+    });
+
+    function showMessage(msg) {
+      document.getElementById("statusMessage").innerText = msg;
+    }
+
+    // تحديث الجدول
+    function renderTable() {
+      const tbody = document.querySelector("#requestsTable tbody");
+      tbody.innerHTML = "";
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      allRequests.forEach((req, index) => {
+        const tr = document.createElement("tr");
+        const status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${status}</td>`;
+        // تمييز طلبي أنا
+        if (index === myRequestId) {
+          tr.style.background = "#d1f7d1";
+          tr.style.fontWeight = "bold";
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    function checkStatus() {
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      if (myRequestId !== null && allRequests[myRequestId]) {
+        const req = allRequests[myRequestId];
+        if (req.accepted) {
+          const time = req.openTime || "غير معروف";
+          showMessage("✅ تم فتح الجهاز في: " + time);
+        } else {
+          showMessage("⏳ طلبك قيد الانتظار...");
+        }
+      }
+      renderTable();
+    }
+
+    // عند فتح الصفحة
+    checkStatus();
+    setInterval(checkStatus, 3000);
+  </script>
+</body>
+</html>
