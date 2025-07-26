@@ -101,14 +101,21 @@
     function startCountdown(req) {
       const countdownDiv = document.getElementById("countdown");
       if (!req.duration || !req.startTime) { countdownDiv.innerText = ""; return; }
+
       function updateCountdown() {
         const now = Date.now();
         const endTime = req.startTime + req.duration * 60 * 1000;
         const remaining = endTime - now;
-        if (remaining <= 0) { countdownDiv.innerText = "انتهت الجلسة"; return; }
+
+        if (remaining <= 0) {
+          countdownDiv.innerText = "انتهت الجلسة";
+          return;
+        }
+
         const minutes = Math.floor(remaining / 1000 / 60);
         const seconds = Math.floor((remaining / 1000) % 60);
         countdownDiv.innerText = `الوقت المتبقي: ${minutes}:${seconds < 10 ? '0'+seconds : seconds}`;
+
         requestAnimationFrame(updateCountdown);
       }
       updateCountdown();
