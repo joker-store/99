@@ -105,8 +105,6 @@
       const req = allRequests.find(r => r.id === myRequestId);
       if (req) {
         if (req.cycleStarted) {
-          showMessage(`✅ تم فتح الجهاز في: ${req.openTime}`);
-          startCountdown(req);
         } else if (req.accepted) {
           showMessage("تمت الموافقة - في انتظار بدء الدورة...");
         } else {
