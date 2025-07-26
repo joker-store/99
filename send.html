@@ -4,90 +4,32 @@
   <meta charset="UTF-8" />
   <title>طلب فتح جهاز</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-image: url('background.jpg');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      padding: 20px;
-      direction: rtl;
-      min-height: 100vh;
-    }
-    form {
-      background: rgba(255, 255, 255, 0.85);
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 400px;
-      margin: auto;
-    }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background-color: #2ecc71;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    #statusMessage, #countdown {
-      text-align: center;
-      background-color: #ffffffcc;
-      margin-top: 15px;
-      padding: 10px;
-      border-radius: 8px;
-      font-weight: bold;
-    }
-    #countdown {
-      font-size: 20px;
-      color: #e74c3c;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: rgba(255, 255, 255, 0.9);
-    }
-    table th, table td {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-    }
-    table th {
-      background: #2ecc71;
-      color: white;
-    }
+    body {font-family: Arial, sans-serif;background-image: url('background.jpg');background-size: cover;background-position: center;background-repeat: no-repeat;padding: 20px;direction: rtl;min-height: 100vh;}
+    form {background: rgba(255, 255, 255, 0.85);padding: 20px;border-radius: 12px;max-width: 400px;margin: auto;}
+    input, select, button {width: 100%;padding: 10px;margin: 10px 0;font-size: 16px;border-radius: 6px;border: 1px solid #ccc;}
+    button {background-color: #2ecc71;color: white;border: none;cursor: pointer;}
+    #statusMessage, #countdown {text-align: center;background-color: #ffffffcc;margin-top: 15px;padding: 10px;border-radius: 8px;font-weight: bold;}
+    #countdown {font-size: 20px;color: #e74c3c;}
+    table {width: 100%;border-collapse: collapse;margin-top: 20px;background: rgba(255, 255, 255, 0.9);}
+    table th, table td {border: 1px solid #ccc;padding: 10px;text-align: center;}
+    table th {background: #2ecc71;color: white;}
+    #deleteBtn {background: #e74c3c;color: white;margin-top: 10px;}
   </style>
 </head>
 <body>
   <h2>إرسال طلب فتح جهاز</h2>
   <form id="requestForm">
     <label for="senderName">اسمك:</label>
-    <input type="text" id="senderName" required placeholder="الاسم" />
+    <input type="text" id="senderName" required placeholder="مثلاً: أحمد" />
 
     <label for="device">اختر الجهاز:</label>
     <select id="device" required>
       <option value="">-- اختر جهاز --</option>
-      <option value="PC01">PC01</option>
-      <option value="PC02">PC02</option>
-      <option value="PC03">PC03</option>
-      <option value="PC04">PC04</option>
-      <option value="PC05">PC05</option>
-      <option value="PC06">PC06</option>
-      <option value="PC07">PC07</option>
-      <option value="PC08">PC08</option>
-      <option value="PC09">PC09</option>
-      <option value="PC10">PC10</option>
-      <option value="PC11">PC11</option>
-      <option value="PC12">PC12</option>
-      <option value="PC13_VIP">PC13_VIP</option>
-      <option value="PC14_VIP">PC14_VIP</option>
-      <option value="PC15_VIP">PC15_VIP</option>
+      <option value="PC01">PC01</option><option value="PC02">PC02</option><option value="PC03">PC03</option>
+      <option value="PC04">PC04</option><option value="PC05">PC05</option><option value="PC06">PC06</option>
+      <option value="PC07">PC07</option><option value="PC08">PC08</option><option value="PC09">PC09</option>
+      <option value="PC10">PC10</option><option value="PC11">PC11</option><option value="PC12">PC12</option>
+      <option value="PC13_VIP">PC13_VIP</option><option value="PC14_VIP">PC14_VIP</option><option value="PC15_VIP">PC15_VIP</option>
     </select>
 
     <button type="submit">إرسال</button>
@@ -95,14 +37,11 @@
 
   <div id="statusMessage"></div>
   <div id="countdown"></div>
+  <button id="deleteBtn" style="display:none;">حذف طلبي</button>
 
   <table id="requestsTable">
     <thead>
-      <tr>
-        <th>الاسم</th>
-        <th>الجهاز</th>
-        <th>الحالة</th>
-      </tr>
+      <tr><th>الاسم</th><th>الجهاز</th><th>الحالة</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -114,13 +53,24 @@
       e.preventDefault();
       const sender = document.getElementById('senderName').value.trim();
       const device = document.getElementById('device').value;
-      const time = new Date().toLocaleTimeString();
-      if (!sender || !device) {
-        showMessage("⚠️ يرجى إدخال البيانات كاملة");
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+
+      // منع الحجز المكرر
+      if (allRequests.some(r => r.device === device && (r.accepted || r.cycleStarted))) {
+        showMessage("⚠️ الجهاز محجوز بالفعل أو في دورة شغالة.");
         return;
       }
-      const newRequest = { sender, device, time, accepted: false, openTime: null, duration: null, startTime: null };
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+
+      const newRequest = {
+        sender, device,
+        time: new Date().toLocaleTimeString(),
+        requestTime: Date.now(),
+        accepted: false,
+        cycleStarted: false,
+        openTime: null,
+        duration: null,
+        startTime: null
+      };
       allRequests.push(newRequest);
       localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
       myRequestId = allRequests.length - 1;
@@ -128,24 +78,22 @@
       showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
       this.reset();
       renderTable();
+      toggleDeleteButton();
     });
 
-    function showMessage(msg) {
-      document.getElementById("statusMessage").innerText = msg;
-    }
+    function showMessage(msg) {document.getElementById("statusMessage").innerText = msg;}
 
     function renderTable() {
       const tbody = document.querySelector("#requestsTable tbody");
       tbody.innerHTML = "";
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       allRequests.forEach((req, index) => {
-        const status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
+        let status = "قيد الانتظار";
+        if (req.accepted && !req.cycleStarted) status = "في انتظار بدء الدورة";
+        if (req.cycleStarted) status = "الدورة قيد التشغيل";
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${status}</td>`;
-        if (index === myRequestId) {
-          tr.style.background = "#d1f7d1";
-          tr.style.fontWeight = "bold";
-        }
+        if (index === myRequestId) {tr.style.background = "#d1f7d1";tr.style.fontWeight = "bold";}
         tbody.appendChild(tr);
       });
     }
@@ -170,16 +118,48 @@
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       if (myRequestId !== null && allRequests[myRequestId]) {
         const req = allRequests[myRequestId];
-        if (req.accepted) {
-          showMessage("✅ تم فتح الجهاز في: " + (req.openTime || "غير معروف"));
+        if (req.cycleStarted) {
+          showMessage("✅ الدورة بدأت في: " + (req.openTime || "غير معروف"));
           startCountdown(req);
+        } else if (req.accepted) {
+          showMessage("⏳ تمت الموافقة، في انتظار بدء الدورة...");
         } else {
           showMessage("⏳ طلبك قيد الانتظار...");
-          document.getElementById("countdown").innerText = "";
         }
       }
       renderTable();
+      toggleDeleteButton();
     }
+
+    function toggleDeleteButton() {
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      const btn = document.getElementById("deleteBtn");
+      if (myRequestId !== null && allRequests[myRequestId]) {
+        const req = allRequests[myRequestId];
+        if (Date.now() - req.requestTime < 60000 && !req.accepted) {
+          btn.style.display = "block";
+        } else {
+          btn.style.display = "none";
+        }
+      }
+    }
+
+    document.getElementById("deleteBtn").addEventListener("click", function() {
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      if (myRequestId !== null && allRequests[myRequestId]) {
+        if (Date.now() - allRequests[myRequestId].requestTime < 60000 && !allRequests[myRequestId].accepted) {
+          allRequests.splice(myRequestId, 1);
+          localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
+          localStorage.removeItem('myRequestId');
+          myRequestId = null;
+          showMessage("تم حذف الطلب.");
+          renderTable();
+          this.style.display = "none";
+        } else {
+          alert("لا يمكنك حذف الطلب الآن.");
+        }
+      }
+    });
 
     checkStatus();
     setInterval(checkStatus, 3000);
