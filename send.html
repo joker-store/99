@@ -104,14 +104,23 @@
   </table>
 
   <script>
+    // استرجاع ID الطلب المحفوظ
     let myRequestId = localStorage.getItem('myRequestId') ? parseInt(localStorage.getItem('myRequestId')) : null;
 
+    // عند إرسال الفورم
     document.getElementById('requestForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const sender = document.getElementById('senderName').value;
+      e.preventDefault(); // منع الريفريش
+
+      const sender = document.getElementById('senderName').value.trim();
       const device = document.getElementById('device').value;
       const time = new Date().toLocaleTimeString();
 
+      if (!sender || !device) {
+        showMessage("⚠️ يرجى إدخال البيانات كاملة");
+        return;
+      }
+
+      // تجهيز الطلب الجديد
       const newRequest = {
         sender: sender,
         device: device,
@@ -120,23 +129,27 @@
         openTime: null
       };
 
+      // حفظ الطلب في localStorage
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       allRequests.push(newRequest);
       localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
 
+      // تخزين رقم الطلب الخاص بالمستخدم
       myRequestId = allRequests.length - 1;
-      localStorage.setItem('myRequestId', myRequestId); // تخزين ID الطلب
+      localStorage.setItem('myRequestId', myRequestId);
+
       showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
       this.reset();
 
       renderTable();
     });
 
+    // عرض رسالة حالة
     function showMessage(msg) {
       document.getElementById("statusMessage").innerText = msg;
     }
 
-    // تحديث الجدول
+    // رسم الجدول
     function renderTable() {
       const tbody = document.querySelector("#requestsTable tbody");
       tbody.innerHTML = "";
@@ -145,8 +158,7 @@
         const tr = document.createElement("tr");
         const status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
         tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${status}</td>`;
-        // تمييز طلبي أنا
-        if (index === myRequestId) {
+        if (index === myRequestId) { // تمييز طلبي أنا
           tr.style.background = "#d1f7d1";
           tr.style.fontWeight = "bold";
         }
@@ -154,6 +166,7 @@
       });
     }
 
+    // تحديث حالة الطلب
     function checkStatus() {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       if (myRequestId !== null && allRequests[myRequestId]) {
@@ -168,7 +181,7 @@
       renderTable();
     }
 
-    // عند فتح الصفحة
+    // تشغيل أولي + تحديث كل 3 ثواني
     checkStatus();
     setInterval(checkStatus, 3000);
   </script>
