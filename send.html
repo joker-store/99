@@ -35,7 +35,7 @@
       border: none;
       cursor: pointer;
     }
-    #statusMessage {
+    #statusMessage, #countdown {
       text-align: center;
       background-color: #ffffffcc;
       margin-top: 15px;
@@ -44,11 +44,8 @@
       font-weight: bold;
     }
     #countdown {
-      text-align: center;
       font-size: 20px;
-      font-weight: bold;
       color: #e74c3c;
-      margin-top: 10px;
     }
     table {
       width: 100%;
@@ -80,4 +77,112 @@
       <option value="PC02">PC02</option>
       <option value="PC03">PC03</option>
       <option value="PC04">PC04</option>
-      <option value="PC05">PC05</optio
+      <option value="PC05">PC05</option>
+      <option value="PC06">PC06</option>
+      <option value="PC07">PC07</option>
+      <option value="PC08">PC08</option>
+      <option value="PC09">PC09</option>
+      <option value="PC10">PC10</option>
+      <option value="PC11">PC11</option>
+      <option value="PC12">PC12</option>
+      <option value="PC13_VIP">PC13_VIP</option>
+      <option value="PC14_VIP">PC14_VIP</option>
+      <option value="PC15_VIP">PC15_VIP</option>
+    </select>
+
+    <button type="submit">إرسال</button>
+  </form>
+
+  <div id="statusMessage"></div>
+  <div id="countdown"></div>
+
+  <table id="requestsTable">
+    <thead>
+      <tr>
+        <th>الاسم</th>
+        <th>الجهاز</th>
+        <th>الحالة</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let myRequestId = localStorage.getItem('myRequestId') ? parseInt(localStorage.getItem('myRequestId')) : null;
+
+    document.getElementById('requestForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const sender = document.getElementById('senderName').value.trim();
+      const device = document.getElementById('device').value;
+      const time = new Date().toLocaleTimeString();
+      if (!sender || !device) {
+        showMessage("⚠️ يرجى إدخال البيانات كاملة");
+        return;
+      }
+      const newRequest = { sender, device, time, accepted: false, openTime: null, duration: null, startTime: null };
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      allRequests.push(newRequest);
+      localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
+      myRequestId = allRequests.length - 1;
+      localStorage.setItem('myRequestId', myRequestId);
+      showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
+      this.reset();
+      renderTable();
+    });
+
+    function showMessage(msg) {
+      document.getElementById("statusMessage").innerText = msg;
+    }
+
+    function renderTable() {
+      const tbody = document.querySelector("#requestsTable tbody");
+      tbody.innerHTML = "";
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      allRequests.forEach((req, index) => {
+        const status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${status}</td>`;
+        if (index === myRequestId) {
+          tr.style.background = "#d1f7d1";
+          tr.style.fontWeight = "bold";
+        }
+        tbody.appendChild(tr);
+      });
+    }
+
+    function startCountdown(req) {
+      const countdownDiv = document.getElementById("countdown");
+      if (!req.duration || !req.startTime) { countdownDiv.innerText = ""; return; }
+      function updateCountdown() {
+        const now = Date.now();
+        const endTime = req.startTime + req.duration * 60 * 1000;
+        const remaining = endTime - now;
+        if (remaining <= 0) { countdownDiv.innerText = "انتهت الجلسة"; return; }
+        const minutes = Math.floor(remaining / 1000 / 60);
+        const seconds = Math.floor((remaining / 1000) % 60);
+        countdownDiv.innerText = `الوقت المتبقي: ${minutes}:${seconds < 10 ? '0'+seconds : seconds}`;
+        requestAnimationFrame(updateCountdown);
+      }
+      updateCountdown();
+    }
+
+    function checkStatus() {
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      if (myRequestId !== null && allRequests[myRequestId]) {
+        const req = allRequests[myRequestId];
+        if (req.accepted) {
+          showMessage("✅ تم فتح الجهاز في: " + (req.openTime || "غير معروف"));
+          startCountdown(req);
+        } else {
+          showMessage("⏳ طلبك قيد الانتظار...");
+          document.getElementById("countdown").innerText = "";
+        }
+      }
+      renderTable();
+    }
+
+    checkStatus();
+    setInterval(checkStatus, 3000);
+  </script>
+</body>
+</html>
