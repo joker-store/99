@@ -5,7 +5,7 @@
   <title>لوحة تحكم المسؤول</title>
   <style>
     body {font-family: Arial, sans-serif;background-image: url('background.jpg');background-size: cover;background-position: center;background-repeat: no-repeat;padding: 20px;direction: rtl;min-height: 100vh;}
-    h2 {text-align: center; color:#fff;}
+    h2 {text-align: center;color:#fff;}
     .controls {text-align: center; margin-bottom: 20px;}
     .controls button {padding: 8px 14px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;}
     table {width: 100%; border-collapse: collapse; margin-top: 20px; background: rgba(255,255,255,0.95);}
@@ -24,7 +24,7 @@
   <table id="adminTable">
     <thead>
       <tr>
-        <th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>الحالة</th><th>مدة التشغيل</th><th>تحكم</th>
+        <th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت الفتح</th><th>المدة</th><th>الحالة</th><th>تحكم</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -35,70 +35,60 @@
       const tbody = document.querySelector("#adminTable tbody");
       tbody.innerHTML = "";
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      allRequests.forEach((req, index) => {
+      allRequests.forEach((req) => {
         let status = "قيد الانتظار";
-        if (req.accepted && !req.cycleStarted) status = "في انتظار بدء الدورة";
+        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة - في انتظار البدء";
         if (req.cycleStarted) status = "الدورة قيد التشغيل";
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${req.sender}</td>
           <td>${req.device}</td>
           <td>${new Date(req.requestTime).toLocaleString()}</td>
+          <td>${req.openTime || '-'}</td>
+          <td><input type="number" min="1" placeholder="دقائق" onchange="setDuration('${req.id}', this.value)" value="${req.duration || ''}" ${req.cycleStarted ? 'disabled' : ''}></td>
           <td>${status}</td>
-          <td><input type="number" min="1" placeholder="دقائق" onchange="setDuration(${index}, this.value)" value="${req.duration || ''}" ${req.cycleStarted ? 'disabled' : ''}></td>
           <td>
-            <button class="action-btn" onclick="approveRequest(${index})" ${req.accepted ? 'disabled' : ''}>موافقة</button>
-            <button class="action-btn" onclick="startCycle(${index})" ${req.cycleStarted ? 'disabled' : ''}>فتح الدورة</button>
-            <button class="action-btn" style="background:#e74c3c" onclick="deleteRequest(${index})">حذف</button>
+            <button class="action-btn" onclick="approveRequest('${req.id}')" ${req.accepted ? 'disabled' : ''}>موافقة</button>
+            <button class="action-btn" onclick="startCycle('${req.id}')" ${req.cycleStarted ? 'disabled' : ''}>فتح الدورة</button>
+            <button class="action-btn" style="background:#e74c3c" onclick="deleteRequest('${req.id}')">حذف</button>
           </td>`;
         tbody.appendChild(tr);
       });
     }
 
-    function approveRequest(index) {
+    function approveRequest(id) {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (allRequests[index]) {
-        allRequests[index].accepted = true;
+      const req = allRequests.find(r => r.id === id);
+      if (req) {req.accepted = true;localStorage.setItem('deviceRequests', JSON.stringify(allRequests));renderAdminTable();}
+    }
+
+    function startCycle(id) {
+      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
+      const req = allRequests.find(r => r.id === id);
+      if (req) {
+        if (!req.duration || req.duration <= 0) {alert("يرجى تحديد مدة الجلسة أولاً (بالدقائق).");return;}
+        req.cycleStarted = true;
+        req.openTime = new Date().toLocaleTimeString();
+        req.startTime = Date.now();
         localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
         renderAdminTable();
       }
     }
 
-    function startCycle(index) {
+    function deleteRequest(id) {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (allRequests[index]) {
-        if (!allRequests[index].duration || allRequests[index].duration <= 0) {
-          alert("يرجى تحديد مدة الجلسة أولاً (بالدقائق).");
-          return;
-        }
-        allRequests[index].cycleStarted = true;
-        allRequests[index].openTime = new Date().toLocaleTimeString();
-        allRequests[index].startTime = Date.now();
-        localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-        renderAdminTable();
-      }
-    }
-
-    function deleteRequest(index) {
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      allRequests.splice(index, 1);
-      localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-      renderAdminTable();
+      const idx = allRequests.findIndex(r => r.id === id);
+      if (idx !== -1) {allRequests.splice(idx, 1);localStorage.setItem('deviceRequests', JSON.stringify(allRequests));renderAdminTable();}
     }
 
     function clearAllRequests() {
-      if (confirm("هل أنت متأكد من مسح جميع الطلبات؟")) {
-        localStorage.removeItem('deviceRequests');
-        renderAdminTable();
-      }
+      if (confirm("هل أنت متأكد من مسح جميع الطلبات؟")) {localStorage.removeItem('deviceRequests');renderAdminTable();}
     }
 
-    function setDuration(index, minutes) {
+    function setDuration(id, minutes) {
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (allRequests[index]) {
-        allRequests[index].duration = parseInt(minutes) || 0;
-        localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-      }
+      const req = allRequests.find(r => r.id === id);
+      if (req) {req.duration = parseInt(minutes) || 0;localStorage.setItem('deviceRequests', JSON.stringify(allRequests));}
     }
 
     renderAdminTable();
