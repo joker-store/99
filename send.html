@@ -4,108 +4,76 @@
   <meta charset="UTF-8" />
   <title>طلب فتح جهاز</title>
   <style>
-    body {font-family: Arial, sans-serif;background: #f7f7f7;padding: 20px;direction: rtl;min-height: 100vh;}
-    form {background: #fff;padding: 20px;border-radius: 12px;max-width: 400px;margin: auto;box-shadow:0 0 10px #ccc;}
-    input, select, button {width: 100%;padding: 10px;margin: 10px 0;font-size: 16px;border-radius: 6px;border: 1px solid #ccc;}
-    button {background-color: #2ecc71;color: white;border: none;cursor: pointer;}
-    #statusMessage {text-align: center;background-color: #eee;margin-top: 15px;padding: 10px;border-radius: 8px;font-weight: bold;}
-    table {width: 100%;border-collapse: collapse;margin-top: 20px;background: #fff;box-shadow:0 0 10px #ccc;}
-    table th, table td {border: 1px solid #ccc;padding: 10px;text-align: center;}
-    table th {background: #2ecc71;color: white;}
-    #deleteBtn {background: #e74c3c;color: white;margin-top: 10px;}
+    body {font-family:Arial;background:#f3f3f3;padding:20px;direction:rtl;}
+    form {background:#fff;padding:20px;border-radius:10px;max-width:400px;margin:auto;}
+    input,select,button {width:100%;padding:10px;margin:10px 0;font-size:16px;border-radius:6px;border:1px solid #ccc;}
+    button {background:#2ecc71;color:white;border:none;cursor:pointer;}
+    table {width:100%;margin-top:20px;background:#fff;border-collapse:collapse;}
+    th,td {border:1px solid #ccc;padding:10px;text-align:center;}
+    th {background:#2ecc71;color:#fff;}
   </style>
 </head>
 <body>
   <h2>إرسال طلب فتح جهاز</h2>
   <form id="requestForm">
-    <label for="senderName">اسمك:</label>
     <input type="text" id="senderName" required placeholder="الاسم" />
-    <label for="device">اختر الجهاز:</label>
     <select id="device" required>
       <option value="">-- اختر جهاز --</option>
       <option value="PC01">PC01</option><option value="PC02">PC02</option><option value="PC03">PC03</option>
-      <option value="PC04">PC04</option><option value="PC05">PC05</option><option value="PC06">PC06</option>
-      <option value="PC07">PC07</option><option value="PC08">PC08</option><option value="PC09">PC09</option>
+      <option value="PC04">PC04</option><option value="PC05">PC05</option>
     </select>
     <button type="submit">إرسال</button>
   </form>
-
   <div id="statusMessage"></div>
-  <button id="deleteBtn" style="display:none;">حذف طلبي</button>
-
   <table id="requestsTable">
-    <thead>
-      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>الحالة</th></tr>
-    </thead>
+    <thead><tr><th>الاسم</th><th>الجهاز</th><th>الوقت</th><th>الحالة</th></tr></thead>
     <tbody></tbody>
   </table>
 
-  <script>
-    function generateId() {return 'id-' + Math.random().toString(36).substr(2, 9);}
-    let myRequestId = localStorage.getItem('myRequestId') || null;
+  <script type="module">
+    // Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    document.getElementById('requestForm').addEventListener('submit', function (e) {
+    const firebaseConfig = {
+      apiKey: "AIzaSyDLGPZq3_iDOus8jNe3RJ5ARiB3JAyLSz0",
+      authDomain: "pc-club-89272.firebaseapp.com",
+      databaseURL: "https://pc-club-89272-default-rtdb.firebaseio.com",
+      projectId: "pc-club-89272",
+      storageBucket: "pc-club-89272.firebasestorage.app",
+      messagingSenderId: "167526968749",
+      appId: "1:167526968749:web:f57156a3095c9503838524",
+      measurementId: "G-85MJR3FJ2Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const form = document.getElementById("requestForm");
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const sender = document.getElementById('senderName').value.trim();
-      const device = document.getElementById('device').value;
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (allRequests.some(r => r.device === device && r.accepted)) {
-        showMessage("⚠️ الجهاز محجوز بالفعل.");
-        return;
-      }
-      const id = generateId();
-      const newRequest = {id, sender, device,time: new Date().toLocaleTimeString(),requestTime: Date.now(),accepted: false};
-      allRequests.push(newRequest);
-      localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-      myRequestId = id;
-      localStorage.setItem('myRequestId', myRequestId);
-      showMessage("✅ تم إرسال الطلب، جارٍ انتظار الموافقة...");
-      this.reset();
-      renderTable();
-      toggleDeleteButton();
+      const sender = document.getElementById("senderName").value.trim();
+      const device = document.getElementById("device").value;
+      if (!sender || !device) return;
+      push(ref(db, "requests"), {
+        sender, device,
+        time: new Date().toLocaleString(),
+        status: "قيد الانتظار"
+      });
+      form.reset();
+      document.getElementById("statusMessage").innerText = "تم إرسال الطلب ✅";
     });
 
-    function showMessage(msg) {document.getElementById("statusMessage").innerText = msg;}
-    function renderTable() {
-      const tbody = document.querySelector("#requestsTable tbody");
+    const tbody = document.querySelector("#requestsTable tbody");
+    onValue(ref(db, "requests"), (snapshot) => {
       tbody.innerHTML = "";
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      allRequests.forEach((req) => {
-        let status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
+      snapshot.forEach(child => {
+        const req = child.val();
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${status}</td>`;
-        if (req.id === myRequestId) {tr.style.background = "#d1f7d1";tr.style.fontWeight = "bold";}
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${req.status}</td>`;
         tbody.appendChild(tr);
       });
-    }
-
-    function toggleDeleteButton() {
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      const req = allRequests.find(r => r.id === myRequestId);
-      const btn = document.getElementById("deleteBtn");
-      if (req && Date.now() - req.requestTime < 60000 && !req.accepted) {btn.style.display = "block";} else {btn.style.display = "none";}
-    }
-
-    document.getElementById("deleteBtn").addEventListener("click", function() {
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      const idx = allRequests.findIndex(r => r.id === myRequestId);
-      if (idx !== -1) {
-        if (Date.now() - allRequests[idx].requestTime < 60000 && !allRequests[idx].accepted) {
-          allRequests.splice(idx, 1);
-          localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
-          localStorage.removeItem('myRequestId');
-          myRequestId = null;
-          showMessage("تم حذف الطلب.");
-          renderTable();
-          this.style.display = "none";
-        } else {
-          alert("لا يمكنك حذف الطلب الآن.");
-        }
-      }
     });
-
-    renderTable();
-    setInterval(renderTable, 3000);
   </script>
 </body>
 </html>
