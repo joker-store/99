@@ -4,13 +4,12 @@
   <meta charset="UTF-8" />
   <title>طلب فتح جهاز</title>
   <style>
-    body {font-family: Arial, sans-serif;background-image: url('background.jpg');background-size: cover;background-position: center;background-repeat: no-repeat;padding: 20px;direction: rtl;min-height: 100vh;}
-    form {background: rgba(255, 255, 255, 0.85);padding: 20px;border-radius: 12px;max-width: 400px;margin: auto;}
+    body {font-family: Arial, sans-serif;background: #f7f7f7;padding: 20px;direction: rtl;min-height: 100vh;}
+    form {background: #fff;padding: 20px;border-radius: 12px;max-width: 400px;margin: auto;box-shadow:0 0 10px #ccc;}
     input, select, button {width: 100%;padding: 10px;margin: 10px 0;font-size: 16px;border-radius: 6px;border: 1px solid #ccc;}
     button {background-color: #2ecc71;color: white;border: none;cursor: pointer;}
-    #statusMessage, #countdown {text-align: center;background-color: #ffffffcc;margin-top: 15px;padding: 10px;border-radius: 8px;font-weight: bold;}
-    #countdown {font-size: 20px;color: #e74c3c;}
-    table {width: 100%;border-collapse: collapse;margin-top: 20px;background: rgba(255, 255, 255, 0.9);}
+    #statusMessage {text-align: center;background-color: #eee;margin-top: 15px;padding: 10px;border-radius: 8px;font-weight: bold;}
+    table {width: 100%;border-collapse: collapse;margin-top: 20px;background: #fff;box-shadow:0 0 10px #ccc;}
     table th, table td {border: 1px solid #ccc;padding: 10px;text-align: center;}
     table th {background: #2ecc71;color: white;}
     #deleteBtn {background: #e74c3c;color: white;margin-top: 10px;}
@@ -27,19 +26,16 @@
       <option value="PC01">PC01</option><option value="PC02">PC02</option><option value="PC03">PC03</option>
       <option value="PC04">PC04</option><option value="PC05">PC05</option><option value="PC06">PC06</option>
       <option value="PC07">PC07</option><option value="PC08">PC08</option><option value="PC09">PC09</option>
-      <option value="PC10">PC10</option><option value="PC11">PC11</option><option value="PC12">PC12</option>
-      <option value="PC13_VIP">PC13_VIP</option><option value="PC14_VIP">PC14_VIP</option><option value="PC15_VIP">PC15_VIP</option>
     </select>
     <button type="submit">إرسال</button>
   </form>
 
   <div id="statusMessage"></div>
-  <div id="countdown"></div>
   <button id="deleteBtn" style="display:none;">حذف طلبي</button>
 
   <table id="requestsTable">
     <thead>
-      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت بدء</th><th>الوقت المتبقى علي انتهاء الدورة الحالية</th><th>الحالة</th></tr>
+      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>الحالة</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -53,12 +49,12 @@
       const sender = document.getElementById('senderName').value.trim();
       const device = document.getElementById('device').value;
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      if (allRequests.some(r => r.device === device && (r.cycleStarted))) {
-        showMessage("⚠️ الجهاز محجوز بدورة شغالة.");
+      if (allRequests.some(r => r.device === device && r.accepted)) {
+        showMessage("⚠️ الجهاز محجوز بالفعل.");
         return;
       }
       const id = generateId();
-      const newRequest = {id, sender, device,time: new Date().toLocaleTimeString(),requestTime: Date.now(),accepted: false,cycleStarted: false,openTime: null,duration: null,startTime: null};
+      const newRequest = {id, sender, device,time: new Date().toLocaleTimeString(),requestTime: Date.now(),accepted: false};
       allRequests.push(newRequest);
       localStorage.setItem('deviceRequests', JSON.stringify(allRequests));
       myRequestId = id;
@@ -70,49 +66,17 @@
     });
 
     function showMessage(msg) {document.getElementById("statusMessage").innerText = msg;}
-
     function renderTable() {
       const tbody = document.querySelector("#requestsTable tbody");
       tbody.innerHTML = "";
       const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
       allRequests.forEach((req) => {
-        let status = "قيد الانتظار";
-        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة - في انتظار انتهاء الدورة";
-        if (req.cycleStarted) status = "الدورة قيد التشغيل";
+        let status = req.accepted ? "تمت الموافقة" : "قيد الانتظار";
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${req.openTime || '-'}</td><td>${req.duration ? req.duration + ' دقيقة' : '-'}</td><td>${status}</td>`;
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${req.time}</td><td>${status}</td>`;
         if (req.id === myRequestId) {tr.style.background = "#d1f7d1";tr.style.fontWeight = "bold";}
         tbody.appendChild(tr);
       });
-    }
-
-    function startCountdown(req) {
-      const countdownDiv = document.getElementById("countdown");
-      if (!req.duration || !req.startTime) { countdownDiv.innerText = ""; return; }
-      function updateCountdown() {
-        const now = Date.now();
-        const endTime = req.startTime + req.duration * 60 * 1000;
-        const remaining = endTime - now;
-        if (remaining <= 0) {countdownDiv.innerText = "انتهت الجلسة";return;}
-        const minutes = Math.floor(remaining / 1000 / 60);
-        const seconds = Math.floor((remaining / 1000) % 60);
-      }
-      updateCountdown();
-    }
-
-    function checkStatus() {
-      const allRequests = JSON.parse(localStorage.getItem('deviceRequests')) || [];
-      const req = allRequests.find(r => r.id === myRequestId);
-      if (req) {
-        if (req.cycleStarted) {
-        } else if (req.accepted) {
-          showMessage("تمت الموافقة - في انتظار بدء الدورة...");
-        } else {
-          showMessage("⏳ طلبك قيد الانتظار...");
-        }
-      }
-      renderTable();
-      toggleDeleteButton();
     }
 
     function toggleDeleteButton() {
@@ -140,8 +104,8 @@
       }
     });
 
-    checkStatus();
-    setInterval(checkStatus, 3000);
+    renderTable();
+    setInterval(renderTable, 3000);
   </script>
 </body>
 </html>
