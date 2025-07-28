@@ -1,11 +1,26 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>لوحة تحكم المسؤول</title>
+  <style>
+    body {font-family: Arial, sans-serif;background-image: url('background.jpg');background-size: cover;background-position: center;background-repeat: no-repeat;padding: 20px;direction: rtl;min-height: 100vh;}
+    h2 {text-align: center;color:#fff;}
+    .controls {text-align: center; margin-bottom: 20px;}
+    .controls button {padding: 8px 14px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;}
+    table {width: 100%; border-collapse: collapse; margin-top: 20px; background: rgba(255,255,255,0.95);}
+    table th, table td {border: 1px solid #ccc; padding: 10px; text-align: center;}
+    table th {background: #2ecc71; color: white;}
+    button.action-btn {padding: 6px 10px; background: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;}
+    button:disabled {background: #999; cursor: not-allowed;}
+    input[type="number"] {width: 70px; padding: 4px; text-align: center;}
+  </style>
+</head>
 <body>
   <h2>لوحة تحكم المسؤول</h2>
   <div class="controls">
     <button onclick="clearAll()">مسح جميع الطلبات</button>
   </div>
-
-  <audio id="alertSound" src="alert.mp3" preload="auto"></audio>
-
   <table id="adminTable">
     <thead>
       <tr>
@@ -34,28 +49,10 @@
     const db = getDatabase(app);
 
     const tableBody = document.querySelector("#adminTable tbody");
-    const alertSound = document.getElementById("alertSound");
-
-    let knownRequests = {}; // لحفظ الطلبات المعروفة
 
     onValue(ref(db, "requests"), (snapshot) => {
-      const data = snapshot.val() || {};
-      const currentRequestKeys = Object.keys(data);
-
-      // اكتشاف الطلبات الجديدة فقط
-      const newKeys = currentRequestKeys.filter(key => !(key in knownRequests));
-
-      if (newKeys.length > 0) {
-        try {
-          alertSound.play();
-        } catch (e) {
-          console.log("الصوت موقوف من المتصفح، محتاج ضغطة واحدة على الصفحة.");
-        }
-      }
-
-      knownRequests = data; // تحديث القائمة المعروفة
       tableBody.innerHTML = "";
-
+      const data = snapshot.val();
       for (let key in data) {
         const req = data[key];
         let status = "قيد الانتظار";
@@ -79,13 +76,10 @@
     });
 
     window.approve = (id) => update(ref(db, "requests/" + id), { accepted: true });
-    window.start = (id) => update(ref(db, "requests/" + id), {
-      cycleStarted: true,
-      openTime: new Date().toLocaleTimeString(),
-      startTime: Date.now()
-    });
+    window.start = (id) => update(ref(db, "requests/" + id), { cycleStarted: true, openTime: new Date().toLocaleTimeString(), startTime: Date.now() });
     window.setDuration = (id, val) => update(ref(db, "requests/" + id), { duration: parseInt(val) });
     window.del = (id) => remove(ref(db, "requests/" + id));
     window.clearAll = () => remove(ref(db, "requests"));
   </script>
 </body>
+</html>
