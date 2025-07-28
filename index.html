@@ -1,135 +1,213 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>تسجيل الدخول</title>
+  <meta charset="UTF-8" />
+  <title>طلب فتح جهاز</title>
   <style>
     body {
-      margin: 0;
-      padding: 0;
       font-family: Arial, sans-serif;
       background-image: url('background.jpg');
       background-size: cover;
-      background-position: center center;
+      background-position: center;
       background-repeat: no-repeat;
+      padding: 20px;
+      direction: rtl;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
     }
-
-    h2 {
-      background-color: rgba(255, 255, 255, 0.8);
-      padding: 10px 20px;
-      border-radius: 10px;
-      color: #2c3e50;
+    form {
+      background: rgba(255, 255, 255, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 400px;
+      margin: auto;
     }
-
-    input, button {
-      padding: 12px;
-      font-size: 18px;
-      width: 250px;
-      margin: 10px;
-      border: none;
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
       border-radius: 6px;
+      border: 1px solid #ccc;
     }
-
-    input {
-      background-color: #ffffffcc;
-    }
-
     button {
-      background-color: #3498db;
+      background-color: #2ecc71;
       color: white;
+      border: none;
       cursor: pointer;
     }
-
-    button:hover {
-      background-color: #2980b9;
+    #statusMessage, #countdown {
+      text-align: center;
+      background-color: #ffffffcc;
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    #countdown {
+      font-size: 20px;
+      color: #e74c3c;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    table th {
+      background: #2ecc71;
+      color: white;
+    }
+    #deleteBtn {
+      background: #e74c3c;
+      color: white;
+      margin-top: 10px;
+    }
+    /* زر الأدمن + نافذة الرمز */
+    #adminBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #34495e;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    #adminPrompt {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      background: #ffffffee;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 1001;
+    }
+    #adminPrompt input {
+      width: 180px;
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <h2>تسجيل الدخول</h2>
-  <input type="password" id="codeInput" placeholder="رمز الدخول">
-  <button onclick="checkCode()">دخول</button>
+  <h2>إرسال طلب فتح جهاز</h2>
+  <form id="requestForm">
+    <label for="senderName">اسمك:</label>
+    <input type="text" id="senderName" required placeholder="الاسم" />
+    <label for="device">اختر الجهاز:</label>
+    <select id="device" required>
+      <option value="">-- اختر جهاز --</option>
+      <option value="PC01">PC01</option><option value="PC02">PC02</option><option value="PC03">PC03</option>
+      <option value="PC04">PC04</option><option value="PC05">PC05</option><option value="PC06">PC06</option>
+      <option value="PC07">PC07</option><option value="PC08">PC08</option><option value="PC09">PC09</option>
+      <option value="PC10">PC10</option><option value="PC11">PC11</option><option value="PC12">PC12</option>
+      <option value="PC13_VIP">PC13_VIP</option><option value="PC14_VIP">PC14_VIP</option><option value="PC15_VIP">PC15_VIP</option>
+    </select>
+    <button type="submit">إرسال</button>
+  </form>
 
-  <script>
-    function checkCode() {
-      const code = document.getElementById('codeInput').value.trim();
+  <div id="statusMessage"></div>
+  <div id="countdown"></div>
+  <button id="deleteBtn" style="display:none;">حذف طلبي</button>
+
+  <table id="requestsTable">
+    <thead>
+      <tr><th>الاسم</th><th>الجهاز</th><th>وقت الطلب</th><th>وقت بدء الدورة</th><th>الوقت المتبقى علي انهاء الدورة</th><th>الحالة</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- زر دخول الأدمن -->
+  <button id="adminBtn" onclick="showAdminLogin()">لوحة المسؤول</button>
+
+  <!-- نافذة إدخال الرمز -->
+  <div id="adminPrompt">
+    <input type="password" id="adminCode" placeholder="رمز المسؤول" />
+    <br />
+    <button onclick="checkAdminCode()">دخول</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDLGPZq3_iDOus8jNe3RJ5ARiB3JAyLSz0",
+      authDomain: "pc-club-89272.firebaseapp.com",
+      databaseURL: "https://pc-club-89272-default-rtdb.firebaseio.com",
+      projectId: "pc-club-89272",
+      storageBucket: "pc-club-89272.firebasestorage.app",
+      messagingSenderId: "167526968749",
+      appId: "1:167526968749:web:f57156a3095c9503838524",
+      measurementId: "G-85MJR3FJ2Q"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const form = document.getElementById('requestForm');
+    const tableBody = document.querySelector("#requestsTable tbody");
+    const adminPrompt = document.getElementById('adminPrompt');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('senderName').value;
+      const device = document.getElementById('device').value;
+      const newRef = push(ref(db, "requests"));
+      set(newRef, {
+        id: newRef.key,
+        sender: name,
+        device: device,
+        requestTime: Date.now(),
+        accepted: false,
+        cycleStarted: false,
+        duration: null,
+        startTime: null,
+        openTime: null
+      });
+      localStorage.setItem('myRequestId', newRef.key);
+      alert("تم إرسال الطلب ✅");
+      form.reset();
+    });
+
+    onValue(ref(db, "requests"), (snapshot) => {
+      tableBody.innerHTML = "";
+      const data = snapshot.val();
+      for (let key in data) {
+        const req = data[key];
+        const tr = document.createElement("tr");
+        let status = "قيد الانتظار";
+        if (req.accepted && !req.cycleStarted) status = "تمت الموافقة";
+        if (req.cycleStarted) status = "الدورة قيد التشغيل";
+        tr.innerHTML = `<td>${req.sender}</td><td>${req.device}</td><td>${new Date(req.requestTime).toLocaleTimeString()}</td><td>${req.openTime || '-'}</td><td>${req.duration ? req.duration + " دقيقة" : "-"}</td><td>${status}</td>`;
+        tableBody.appendChild(tr);
+      }
+    });
+
+    // عرض مربع إدخال رمز الأدمن
+    window.showAdminLogin = function () {
+      adminPrompt.style.display = 'block';
+    }
+
+    // التحقق من الرمز والانتقال للوحة الأدمن
+    window.checkAdminCode = function () {
+      const code = document.getElementById('adminCode').value.trim();
       if (code === "admin") {
         window.location.href = "admin.html";
       } else {
-        window.location.href = "client.html";
+        alert("رمز خاطئ ❌");
       }
     }
   </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>تسجيل الدخول</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background-image: url('background.jpg');
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-
-        h2 {
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 10px 20px;
-            border-radius: 10px;
-        }
-
-        input, button {
-            padding: 12px;
-            font-size: 18px;
-            width: 250px;
-            margin: 10px;
-            border: none;
-            border-radius: 6px;
-        }
-
-        input {
-            background-color: #ffffffcc;
-        }
-
-        button {
-            background-color: #3498db;
-            color: white;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <h2>WELCOME</h2>
-    <input type="password" id="codeInput" placeholder="رمز الدخول">
-    <button onclick="checkCode()">Login</button>
-
-    <script>
-        function checkCode() {
-            const code = document.getElementById('codeInput').value.trim();
-            if (code === "0000") {
-                window.location.href = "client.html";
-            } else if (code === "admin") {
-                window.location.href = "admin.html";
-            } else {
-                alert("رمز غير صحيح ❌");
-            }
-        }
-    </script>
 </body>
 </html>
