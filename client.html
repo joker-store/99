@@ -4,16 +4,95 @@
   <meta charset="UTF-8" />
   <title>طلب فتح جهاز</title>
   <style>
-    body {font-family: Arial, sans-serif;background-image: url('background.jpg');background-size: cover;background-position: center;background-repeat: no-repeat;padding: 20px;direction: rtl;min-height: 100vh;}
-    form {background: rgba(255, 255, 255, 0.85);padding: 20px;border-radius: 12px;max-width: 400px;margin: auto;}
-    input, select, button {width: 100%;padding: 10px;margin: 10px 0;font-size: 16px;border-radius: 6px;border: 1px solid #ccc;}
-    button {background-color: #2ecc71;color: white;border: none;cursor: pointer;}
-    #statusMessage, #countdown {text-align: center;background-color: #ffffffcc;margin-top: 15px;padding: 10px;border-radius: 8px;font-weight: bold;}
-    #countdown {font-size: 20px;color: #e74c3c;}
-    table {width: 100%;border-collapse: collapse;margin-top: 20px;background: rgba(255, 255, 255, 0.9);}
-    table th, table td {border: 1px solid #ccc;padding: 10px;text-align: center;}
-    table th {background: #2ecc71;color: white;}
-    #deleteBtn {background: #e74c3c;color: white;margin-top: 10px;}
+    body {
+      font-family: Arial, sans-serif;
+      background-image: url('background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      padding: 20px;
+      direction: rtl;
+      min-height: 100vh;
+    }
+    form {
+      background: rgba(255, 255, 255, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 400px;
+      margin: auto;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #statusMessage, #countdown {
+      text-align: center;
+      background-color: #ffffffcc;
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    #countdown {
+      font-size: 20px;
+      color: #e74c3c;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.9);
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    table th {
+      background: #2ecc71;
+      color: white;
+    }
+    #deleteBtn {
+      background: #e74c3c;
+      color: white;
+      margin-top: 10px;
+    }
+    /* زر الأدمن + نافذة الرمز */
+    #adminBtn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #34495e;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #adminPrompt {
+      display: none;
+      position: fixed;
+      bottom: 80px;
+      left: 20px;
+      background: #ffffffee;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    #adminPrompt input {
+      width: 180px;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -44,6 +123,16 @@
     <tbody></tbody>
   </table>
 
+  <!-- زر دخول الأدمن -->
+  <button id="adminBtn" onclick="showAdminLogin()">لوحة المسؤول</button>
+
+  <!-- نافذة إدخال الرمز -->
+  <div id="adminPrompt">
+    <input type="password" id="adminCode" placeholder="رمز المسؤول">
+    <br>
+    <button onclick="checkAdminCode()">دخول</button>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, push, set, onValue, remove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
@@ -62,7 +151,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const myId = localStorage.getItem('myRequestId') || null;
     const form = document.getElementById('requestForm');
     const tableBody = document.querySelector("#requestsTable tbody");
 
@@ -100,6 +188,20 @@
         tableBody.appendChild(tr);
       }
     });
+
+    // 🔐 لوحة الأدمن
+    window.showAdminLogin = function () {
+      document.getElementById('adminPrompt').style.display = 'block';
+    }
+
+    window.checkAdminCode = function () {
+      const code = document.getElementById('adminCode').value.trim();
+      if (code === "admin") {
+        window.location.href = "admin.html";
+      } else {
+        alert("رمز خاطئ ❌");
+      }
+    }
   </script>
 </body>
 </html>
